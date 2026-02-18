@@ -1,0 +1,133 @@
+% Train a Q-learning agent to solve a generic Markov decision process
+% environment.
+
+
+% Fix Random number stream for reproducibility
+previousRngState = rng(0, "twister");
+
+% Create the MDP environment with 8 states and 2 actions (up and down)
+MDP = createMDP(8, ["up", "down"]);
+
+% To model the transition and reward matrix of the MDP
+% MDP.T(state, next_state, action) = Transition probability;
+% MDP.R(state, next_state, action) = reward;
+
+% State 1 transition and reward
+MDP.T(1,2,1) = 1;
+MDP.R(1,2,1) = 3;
+MDP.T(1,3,2) = 1;
+MDP.R(1,3,2) = 1;
+
+% State 2 transition and reward
+MDP.T(2,4,1) = 1;
+MDP.R(2,4,1) = 2;
+MDP.T(2,5,2) = 1;
+MDP.R(2,5,2) = 1;
+% State 3 transition and reward
+MDP.T(3,5,1) = 1;
+MDP.R(3,5,1) = 2;
+MDP.T(3,6,2) = 1;
+MDP.R(3,6,2) = 4;
+% State 4 transition and reward
+MDP.T(4,7,1) = 1;
+MDP.R(4,7,1) = 3;
+MDP.T(4,8,2) = 1;
+MDP.R(4,8,2) = 2;
+% State 5 transition and reward
+MDP.T(5,8,1) = 1;
+MDP.R(5,8,1) = 9;
+MDP.T(5,9,2) = 1;
+MDP.R(5,9,2) = 1;
+% State 6 transition and reward
+MDP.T(6,9,1) = 1;
+MDP.R(6,9,1) = 5;
+MDP.T(6,10,2) = 1;
+MDP.R(6,10,2) = 10;
+% State 7 transition and reward
+MDP.T(7,11,1) = 1;
+MDP.R(7,11,1) = 6;
+MDP.T(7,12,2) = 1;
+MDP.R(7,12,2) = 7;
+% State 8 transition and reward
+MDP.T(8,11,1) = 1;
+MDP.R(8,11,1) = 2;
+MDP.T(8,12,2) = 1;
+MDP.R(8,12,2) = 4;
+% State 9 transition and reward
+MDP.T(9,12,1) = 1;
+MDP.R(9,12,1) = 7;
+MDP.T(9,13,2) = 1;
+MDP.R(9,13,2) = 6;
+
+% State 10 transition and reward
+MDP.T(10,12,1) = 1;
+MDP.R(10,12,1) = 8;
+MDP.T(10,13,2) = 1;
+MDP.T(10,13,2) = 2;
+
+% State 11 transition and reward
+MDP.T(11,11,1) = 1;
+MDP.R(11,11,1) = 0;
+MDP.T(11,11,2) = 1;
+MDP.R(11,11,2) = 0;
+
+% State 12 transition and reward
+MDP.T(12,12,1) = 1;
+MDP.R(12,12,1) = 0;
+MDP.T(12,12,2) = 1;
+MDP.R(12,12,2) = 0;
+
+% State 12 transition and reward
+MDP.T(13,13,1) = 1;
+MDP.R(13,13,1) = 0;
+MDP.T(13,13,2) = 1;
+MDP.R(13,13,2) = 0;
+
+% Specify the terminal states of the MDP
+MDP.terminalStates = ["s11";"s12";"s13"];
+
+% Create the RL MDP environment for this process model
+env = rlMDPEnv(MDP);
+
+% Always reset the state to start from 1
+env.resetFcn = @() 1;
+
+%% Create Q-learning agent
+obsInfo = getObservationInfo(env);
+actInfo = getActionInfo(env);
+qTable = rlTable(obsInfo, actInfo);
+
+% Create the Q-value critic function
+qFunction = rlQValueFunction(qTable, obsInfo, actInfo);
+
+% Set the training options for the Q-learning agent
+
+agentOpts = rlQAgentOptions;
+agentOpts.DiscountFactor = 1;
+agentOpts.EpsilonGreedyExploration.Epsilon = 0.9;
+agentOpts.EpsilonGreedyExploration.EpsilonDecay = 1e-3;
+agentOpts.EpsilonGreedyExploration.EpsilonMin = 0.1;
+agentOpts.CriticOptimizerOptions = rlOptimizerOptions(...
+    "Algorithm","sgdm",...
+    LearnRate=0.1,...
+    L2RegularizationFactor=0);
+qAgent = rlQAgent(qFunction, agentOpts);
+
+%% Train the Q-learning agent
+
+trainOpts = rlTrainingOptions;
+trainOpts.MaxEpisodes = 400;
+trainOpts.MaxStepsPerEpisode = 50;
+trainOpts.ScoreAveragingWindowLength = 30;
+trainOpts.StopTrainingCriteria = "none";
+
+rng(0, "twister");
+
+trainStats = train(qAgent, env, trainOpts);
+
+%% Validate Q-learning Results
+rng(0, "twister")
+
+Data = sim(qAgent, env);
+cumulativeReward = sum(Data.Reward);
+QTabl
